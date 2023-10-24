@@ -15,6 +15,7 @@ library(ggplot2)
 ```
 
 ## Data loading
+
 ```{r}
 #| message: false
 clients <- vroom(here("data", "client.csv"))
@@ -23,15 +24,64 @@ disp <- vroom(here("data", "disp.csv"))
 ```
 
 ## Joining
+
 ```{r}
 da <- inner_join(accounts, disp)
 ```
 
 ## Joining client
+
 ```{r}
 cda <- inner_join(clients, da, by = join_by(client_id), suffix = c("_home", "_bank"))
 ```
 
+### Home District versus Bank District
+
 Because we saw discrepancies in the home and bank district, we can look at the extent.
 
+```{r}
+home_diff_bank <- cda |> filter(district_id_home != district_id_bank) |>
+  nrow()
+```
+
+We observe that **`r home_diff_bank`** clients have a bank in another district compare to their where they live.
+
+Now we can look at people who share an accoutn but don't live together
+```{r}
+cda |> 
+  group_by(account_id) |> 
+  distinct(district_id_home) |>
+  summarise(N=n()) |> 
+  filter(N>1) 
+```
+
+### Gender Gap
+```{r}
+clients |> count(gender) #gender balance
+clients |>
+  ggplot(aes(x=gender)) + geom_bar() + coord_flip() 
+```
+We can see that there is not much gender imbalance.
+
+```{r}
+cda |> 
+  count(gender, type) |> 
+  group_by(gender) |>
+  mutate(freq=n/sum(n)) |>
+  select(-n) |>
+  pivot_wider(values_from = freq, names_from = type)
+```
+
+It seems first that there are no gender imbalance in despondent and owndership of bank account.
+
+Influence of gender on despondent and owndership. 
+```{r}
+cda |>
+  ggplot(aes(y=gender, fill=type)) + geom_bar(position = "fill")
+```
+
+```{r}
+chisq.test(cda |> pull(gender),
+           cda |> pull(type))
+```
 
